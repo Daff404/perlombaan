@@ -22,7 +22,10 @@ class LocalStore {
   List<Map<String, dynamic>> getList(String key) {
     final value = _read()[key];
     if (value is! List) return <Map<String, dynamic>>[];
-    return value.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 
   Future<void> _write(Map<String, dynamic> data) async {
