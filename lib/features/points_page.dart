@@ -1,0 +1,251 @@
+import 'package:flutter/material.dart';
+import '../core/local_store.dart';
+import '../core/system_log.dart';
+import 'reward_catalog.dart';
+import '../services/gemini_service.dart';
+import '../settings.dart';
+import '../ui/forest.dart';
+
+class PointsPage extends StatefulWidget {
+  const PointsPage({super.key, required this.store, required this.onChanged});
+  final LocalStore store;
+  final VoidCallback onChanged;
+  @override
+  State<PointsPage> createState() => _PointsPageState();
+}
+
+class _PointsPageState extends State<PointsPage> {
+  bool _busy = false;
+  final _gemini = GeminiService();
+  @override
+  void dispose() {
+    _gemini.close();
+    super.dispose();
+  }
+
+  Future<void> _redeem() async {
+    if (_busy || widget.store.points < Settings.guideCost) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Buat Panduan Personal?'),
+        content: Text(
+          '${Settings.guideCost} poin akan digunakan setelah panduan AI Detector berhasil dibuat. Ringkasan riwayat jenis sampah dikirim ke AI Detector, tanpa foto.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Buat Panduan'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final requestId = DateTime.now().microsecondsSinceEpoch.toString();
+      final guide = await _gemini.createGuide(widget.store.getList('scans'));
+      await widget.store.redeemGuide(guide: guide, requestId: requestId);
+      if (mounted) {
+        setState(() {});
+        widget.onChanged();
+        _showGuide(guide);
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(SystemLog.failure('guide', e))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _showGuide(String text) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: forest,
+    showDragHandle: true,
+    builder: (context) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: .8,
+      minChildSize: .4,
+      maxChildSize: .94,
+      builder: (context, scroll) => SingleChildScrollView(
+        controller: scroll,
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            serif('Panduan Pilah Personal', size: 29),
+            const SizedBox(height: 20),
+            SelectableText(
+              text,
+              style: const TextStyle(height: 1.8, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  @override
+  Widget build(BuildContext context) {
+    final ledger = widget.store.getList('ledger');
+    final guides = widget.store.getList('guides');
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(22, 5, 22, 25),
+      children: [
+        Glass(
+          child: Row(
+            children: [
+              const BrandGlyph('leaf', size: 55),
+              const SizedBox(width: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Saldo Green Point',
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
+                  metric('${widget.store.points}', size: 42),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 15),
+        Text(
+          'Dapatkan ${Settings.pointsPerScan} poin untuk setiap foto sampah baru yang dikenali AI. Batas ${Settings.rewardedScansPerDay} scan berpoin per hari; foto duplikat tidak menambah saldo.',
+          style: const TextStyle(color: muted, fontSize: 12, height: 1.6),
+        ),
+        const SizedBox(height: 24),
+        RewardCatalog(
+          store: widget.store,
+          onChanged: () {
+            setState(() {});
+            widget.onChanged();
+          },
+        ),
+        const SizedBox(height: 24),
+        serif('Panduan Personal', size: 25),
+        const SizedBox(height: 13),
+        PhotoPanel(
+          photo: Photos.reuse,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              serif('Panduan Pilah Personal', size: 25),
+              const SizedBox(height: 10),
+              const Text(
+                'AI Detector membuat rencana 7 hari berdasarkan jenis sampah yang sudah kamu pindai. Panduan tersimpan dan bisa dibaca kembali.',
+                style: TextStyle(fontSize: 12, height: 1.6),
+              ),
+              const SizedBox(height: 18),
+              LeafButton(
+                _busy
+                    ? 'Membuat Panduan…'
+                    : '${Settings.guideCost} poin • Buat Panduan',
+                icon: Icons.auto_awesome_outlined,
+                onTap: _busy || widget.store.points < Settings.guideCost
+                    ? null
+                    : _redeem,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Setorkan sampah terpilah, kumpulkan Green Point, lalu pilih reward favoritmu.',
+          style: TextStyle(color: muted, fontSize: 10, height: 1.5),
+        ),
+        const SizedBox(height: 25),
+        serif('Panduan Tersimpan', size: 24),
+        const SizedBox(height: 12),
+        if (guides.isEmpty)
+          const Glass(
+            child: Text(
+              'Panduan yang dibuat akan muncul di sini.',
+              style: TextStyle(color: muted, fontSize: 12),
+            ),
+          ),
+        ...guides.map(
+          (g) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Glass(
+              onTap: () => _showGuide(g['text'] as String),
+              child: Row(
+                children: [
+                  const Icon(Icons.menu_book_outlined, color: sage),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Panduan ${'${g['createdAt']}'.split('T').first}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        serif('Riwayat Transaksi', size: 24),
+        const SizedBox(height: 13),
+        if (ledger.isEmpty)
+          const Glass(
+            child: Text(
+              'Belum ada transaksi poin.',
+              style: TextStyle(color: muted, fontSize: 12),
+            ),
+          ),
+        ...ledger.map(
+          (r) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Glass(
+              padding: const EdgeInsets.all(15),
+              child: Row(
+                children: [
+                  Icon(
+                    (r['delta'] as num) > 0
+                        ? Icons.add_circle_outline
+                        : Icons.remove_circle_outline,
+                    color: sage,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${r['description']}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          '${r['createdAt']}'.split('T').first,
+                          style: const TextStyle(color: muted, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${(r['delta'] as num) > 0 ? '+' : ''}${r['delta']}',
+                    style: const TextStyle(
+                      color: sage,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
