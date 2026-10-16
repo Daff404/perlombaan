@@ -1,0 +1,1 @@
+Decorative photos are now original SHION ImageGen assets stored in `assets/images/`. Logo and icons are authored vectors in `assets/icons/`. See `ASSETS.md` for the asset inventory and prompt set. No external photo URL is used by the application.
