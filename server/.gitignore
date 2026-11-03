@@ -1,0 +1,12 @@
+node_modules/
+.env
+database/*.json
+!database/account.json
+database/*.lock
+database/*.tmp
+database/edukasi/
+session/
+storage/
+uploads/
+content/
+secrets/
