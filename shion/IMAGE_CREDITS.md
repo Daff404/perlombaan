@@ -1,1 +1,0 @@
-Decorative photos and the character-led onboarding/account illustrations are original SHION ImageGen assets stored in `assets/images/` and `assets/vector/`. Logo and icons are authored vectors in `assets/icons/`. See `ASSETS.md` and `assets/vector/README.md` for the asset inventory. No external image URL is required by the application.
