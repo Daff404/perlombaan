@@ -1,9 +1,9 @@
 [
   {
     "id": "a7dc703f-dbdd-451b-9b31-53eea43cf317",
-    "username": "admin-shion",
-    "name": "Administrator SHION",
-    "email": "admin@shion.app",
+    "username": "admin-daffa",
+    "name": "Administrator SHION - Daffa",
+    "email": "dapa@shion.app",
     "phone": "",
     "role": "admin",
     "passwordHash": "scrypt:a5662d604a0225a1da1d70847e659624:3baad8acafd14f441c2a8beafa44af657585cc0197052450b8bbc3c8863267333fa8d268d6a003378eb17ec21a22ebff97583976b12eedafb4da3a21c1f7520f",
